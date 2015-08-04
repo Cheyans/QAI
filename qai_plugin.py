@@ -11,9 +11,11 @@ import irc3
 from irc3.plugins.command import command
 import time
 from urllib.parse import urlparse, parse_qs
+import pprint
 
 from taunts import TAUNTS, SPAM_PROTECT_TAUNTS
 from links import LINKS
+from passwords import DB_SERVER, DB_PORT, DB_LOGIN, DB_PASSWORD, DB_TABLE
 
 TWITCH_STREAMS = "https://api.twitch.tv/kraken/streams/?game=Supreme+Commander:+Forged+Alliance" #add the game name at the end of the link (space = "+", eg: Game+Name)
 HITBOX_STREAMS = "https://api.hitbox.tv/media/live/list?filter=popular&game=811&hiddenOnly=false&limit=30&liveonly=true&media=true"
@@ -33,6 +35,11 @@ class Plugin(object):
         self.bot = bot
         self.timers = {'casts': 0, 'streams': 0, 'links': 0}
         self._rage = {}
+        self.conn = asyncio.async(aiomysql.connect(host=DB_SERVER, port=DB_PORT,
+						user=DB_LOGIN, password=DB_PASSWORD,
+						db=DB_TABLE))
+        self.conn = asyncio.get_event_loop().run_until_complete(self.conn)
+	
 
     @classmethod
     def reload(cls, old):
@@ -75,9 +82,52 @@ class Plugin(object):
         try:
             replayId = re.match(REPLAY_MATCH, msg).groups()[0]
             url = LINKS["replay"].replace("ID", replayId)
+
             self.bot.privmsg(channel, "Replay link: %s" % url.replace('#', ''))
         except:
             pass
+
+    @command
+    @asyncio.coroutine
+    def trainers(self, mask, target, args):
+        """Lists online trainers
+
+            %%trainers
+        """
+        cur = yield from self.conn.cursor()
+        yield from cur.execute("SELECT login FROM login INNER JOIN avatars ON avatars.idUser = login.id WHERE idAvatar=62 ORDER BY login;")
+        result = yield from cur.fetchall()
+        userList = self.userListof(result,target)
+        if len(userList) == 0:
+            self.bot.privmsg(mask.nick, "No trainers online, you can find a list of all trainer timezones here: %s" %LINKS["trainers"])
+        else:
+            self.bot.privmsg(mask.nick, "Trainers Online: %s" %userList)
+
+    @command
+    @asyncio.coroutine
+    def mods(self, mask, target, args):
+        """Lists online mods
+
+           %%mods
+        """
+        cur = yield from self.conn.cursor()
+        yield from cur.execute("SELECT login FROM login INNER JOIN lobby_admin ON login.id = lobby_admin.user_id;")
+
+        result = yield from cur.fetchall()
+        userList = self.userListof(result,target)
+        if len(userList) == 0:
+            self.bot.privmsg(mask.nick, "No mods online, commence anarchy! JK please dont't.")
+        else:
+            self.bot.privmsg(mask.nick, "Mods Online: %s" %userList)
+
+    def userListof(self,result,target):
+        groupList = []
+        userList = self.bot.channels[target]
+        for groupMember in result:
+            if groupMember[0] in userList:
+                groupList.append(groupMember[0])
+        groupList = ', '.join(groupList)
+        return groupList
 
     @command(permission='admin')
     def taunt(self, mask, target, args):
