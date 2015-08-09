@@ -13,4 +13,6 @@ LINKS = {
 
     "replayparser": "http://fafafaf.bitbucket.org/",
     "tumblr":       "http://fafreactions.tumblr.com/",
+
+    "trainers":     "http://wiki.faforever.com/index.php?title=User_Groups#Trainers",
 }

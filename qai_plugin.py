@@ -97,6 +97,7 @@ class Plugin(object):
         cur = yield from self.conn.cursor()
         yield from cur.execute("SELECT login FROM login INNER JOIN avatars ON avatars.idUser = login.id WHERE idAvatar=62 ORDER BY login;")
         result = yield from cur.fetchall()
+
         userList = self.userListof(result,target)
         if len(userList) == 0:
             self.bot.privmsg(mask.nick, "No trainers online, you can find a list of all trainer timezones here: %s" %LINKS["trainers"])
@@ -112,8 +113,8 @@ class Plugin(object):
         """
         cur = yield from self.conn.cursor()
         yield from cur.execute("SELECT login FROM login INNER JOIN lobby_admin ON login.id = lobby_admin.user_id;")
-
         result = yield from cur.fetchall()
+
         userList = self.userListof(result,target)
         if len(userList) == 0:
             self.bot.privmsg(mask.nick, "No mods online, commence anarchy! JK please dont't.")
@@ -138,7 +139,7 @@ class Plugin(object):
         """
         p = args.get('<person>')
         if p == 'QAI':
-            p = mask.nick
+            p = mask.nick	
         if not p is None:
             p += ": "
         self._taunt(channel=target, prefix=p)
